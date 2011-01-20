@@ -1,20 +1,20 @@
-############################################
 Git Cached Archiver Module
-############################################
+==========================
+A module to check out git repositories and package them into tar.gz files.
 
 Maintainer Contact
------------------------------------------------
+------------------
 Julian Seidenberg
 <julian (at) silverstripe (dot) com>
 
 Requirements
------------------------------------------------
+------------
 
 Documentation
------------------------------------------------
+-------------
 
 Installation Instructions
------------------------------------------------
+-------------------------
 
 Usage Overview
------------------------------------------------
+--------------
