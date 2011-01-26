@@ -11,9 +11,6 @@ class GitInfoCache extends DataObject {
 		"Branch" => "Varchar(255)",
 		"Tag" => "Varchar(255)",
 		"Timestamp" => "Int",
-	);
-
-	
+	);	
 }
 ?>
-
