@@ -48,11 +48,23 @@ class CachedGitArchiver extends RequestHandler {
 	}
 	
 	function Link() {
-		return Controller::join_links($this->parent->Link(), "MasterDownload");
+		if ($this->parent && $this->parent->Link()) {
+			$link = $this->parent->Link();
+		} else {
+			$link = Director::absoluteBaseURL();
+		}
+		return Controller::join_links($link, "MasterDownload");
 	}
 	
 	function URL() {
-		if(file_exists($this->fullFilename())) {
+		if (file_exists($this->fullFilename()) && $this->tag != "HEAD") {    //no need to rebuild the cache for non-head releases, return those immediately if they are packaged
+			return $this->fullURL();
+		}
+
+		$cachedObject = DataObject::get_one("GitInfoCache","URL = '$this->url' AND Branch = '$this->branch' AND Tag = '$this->tag'");
+
+		//use the current cached version, if it is present, and has a GitInfoCache object from less than an hour ago
+		if(file_exists($this->fullFilename()) && $cachedObject != null && $cachedObject->Timestamp >= (time() - 60*60)) {
 			return $this->fullURL();
 		} else {
 			$urladdition = "?";
@@ -118,7 +130,7 @@ class CachedGitArchiver extends RequestHandler {
 	}
 
 	/**
-	 * Returns the latest revision # in the git repo (cached every hour)
+	 * Returns the latest revision # in the git repo (cached in the template for update every hour)
 	 */
 	function currentRev() {
 		$CLI_url = escapeshellarg($this->url);
@@ -229,6 +241,14 @@ class CachedGitArchiver extends RequestHandler {
 			}
 
 			if($retVal == 0) {
+				//save a notice that this package is cached 
+				$cache = new GitInfoCache();
+				$cache->URL = $this->url;
+				$cache->Branch = $this->branch;
+				$cache->Tag = $this->tag;
+				$cache->Timestamp = time();
+				$cache->write();
+
 				return true;
 			} else {
 				user_error("Couldn't produce .tar.gz of output (return val $retVal): " . implode("\n", $output), E_USER_ERROR);
