@@ -9,9 +9,23 @@ Julian Seidenberg
 
 Requirements
 ------------
+This module depends on the messagequeue module (https://github.com/silverstripe-labs/silverstripe-messagequeue).
 
 Documentation
 -------------
+This module is used to generate downloads of Git repositories. Every time a ModulePage or AddOnRelease class is saved,
+an onAfterWrite script queues a message in message queue to package up a Git module into a zip file. Generating the zip
+file normally takes a few seconds (a bit longer for very large modules).
+
+When the CachedGitArchiver creates a zip file, it also creates a GitInfoCache object that stores information about the archive,
+ such as its URL and SHA hash. This info object is used as a quick way of referencing the SHA hash. It is also used by the
+ GitArchiveUpdateTask to re-generate the master download of a module every hour.
+
+Git was introduced after the SVN downloads using the Subversion module. Using a message queue became necessary because
+generating the git archives on-the-fly when the user requests a page resulted in too many Apache processes.
+
+Errors are logged to:
+  ../assets/modules/.errors.log
 
 Installation Instructions
 -------------------------

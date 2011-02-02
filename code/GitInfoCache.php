@@ -10,7 +10,9 @@ class GitInfoCache extends DataObject {
 		"URL" => "Varchar(255)",
 		"Branch" => "Varchar(255)",
 		"Tag" => "Varchar(255)",
-		"Timestamp" => "Int",
+		"Timestamp" => "SS_Datetime",
+		"CurrentRev" => "Varchar(64)",
+		"FailedAttempts" => "Int"
 	);	
 }
 ?>
