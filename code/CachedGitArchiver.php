@@ -292,7 +292,6 @@ class CachedGitArchiver extends RequestHandler {
 				if (!file_exists($CLI_outputFile)) $retVal = 100;
 				elseif (filesize($CLI_outputFile) <= 512) {
 					$retVal = 100;
-					unlink($CLI_outputFile);
 				}
 			}
 
@@ -305,6 +304,7 @@ class CachedGitArchiver extends RequestHandler {
 
 				return true;
 			} else {
+				exec("rm $CLI_outputFile"); //delete the failed file (tried unlink here, but it didn't work)
 				$cache = DataObject::get_by_id("GitInfoCache", $infoID);
 				$cache->FailedAttempts = $cache->FailedAttempts + 1;
 				$cache->write();
