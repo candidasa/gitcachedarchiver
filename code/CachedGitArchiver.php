@@ -102,7 +102,7 @@ class CachedGitArchiver extends RequestHandler {
 
 			if ($this->branch) $filename .= "-$this->branch";
 			if ($this->tag) $filename .= "-$this->tag";
-			if ($withExtension) $filename .= ".tar.gz";
+			if ($withExtension) $filename .= ".zip";
 		}
 
 		return $filename;
@@ -288,7 +288,12 @@ class CachedGitArchiver extends RequestHandler {
 				$CLI_tag = escapeshellarg($this->tag);
 
 				if ($overwrite && $fileExists) unlink($CLI_outputFile); //delete existing file to be replaced by new version
-				exec("cd $CLI_tmp && rm -R -f $CLI_filename && git clone -b $CLI_branch $CLI_url $CLI_filename && cd $CLI_filename && git archive --format=tar $CLI_tag | gzip > $CLI_outputFile && cd .. && rm -r -f $CLI_filename", $output, $retVal);
+				exec("cd $CLI_tmp && rm -R -f $CLI_filename && git clone -b $CLI_branch $CLI_url $CLI_filename && cd $CLI_filename && git archive --format=zip $CLI_tag -o $CLI_outputFile && cd .. && rm -r -f $CLI_filename", $output, $retVal);
+				if (!file_exists($CLI_outputFile)) $retVal = 100;
+				elseif (filesize($CLI_outputFile) <= 512) {
+					$retVal = 100;
+					unlink($CLI_outputFile);
+				}
 			}
 
 			if($retVal == 0) {
@@ -304,7 +309,9 @@ class CachedGitArchiver extends RequestHandler {
 				$cache->FailedAttempts = $cache->FailedAttempts + 1;
 				$cache->write();
 
-				user_error("Couldn't produce .tar.gz of output (return val $retVal): " . implode("\n", $output), E_USER_ERROR);
+				if ($retVal == 100) $includeError = "- Invalid git branch or tag name";
+				else $includeError = "";
+				user_error("Couldn't produce .tar.gz of output (return val $retVal $includeError): " . implode("\n", $output), E_USER_ERROR);
 			}
 		/*}*/
 	}
