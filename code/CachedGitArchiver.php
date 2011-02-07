@@ -321,6 +321,21 @@ class CachedGitArchiver extends RequestHandler {
 		$cga = new CachedGitArchiver(null, $branch, $tag, $url, $dir);
 		$cga->createFile(true); //overwrite, if necessary
 	}
+
+
+	/** transforms any Git URL with username into a "clean" URL that won't ask for a password.
+	 * Examples:
+	 * git@github.com:candidasa/gitcachedarchiver.git  =>
+	 */
+	static function filterGitURL($url) {
+		//regular expressions to turn invalid git URLs with usernames into valid URLs that can be checked out
+		// without a password prompt appearing (which would block the script)
+		$url = preg_replace('/(\w+?\@github\.com\:)(.*)/','git://github.com/$2',$url);
+		$url = preg_replace('/(.*?\/\/)(\w+\@)(.*)/','$1$3',$url);
+		$url = preg_replace('/(\w+?\@)(.*)/','git://$2',$url);
+
+		return $url;
+	}
 }
 
 ?>
