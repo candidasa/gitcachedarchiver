@@ -57,16 +57,16 @@ class CachedGitArchiver extends RequestHandler {
 	}
 	
 	function URL() {
-		if (file_exists($this->fullFilename()) && $this->tag != "HEAD") {    //no need to rebuild the cache for non-head releases, return those immediately if they are packaged
-			return $this->fullURL();
-		}
+		//if (file_exists($this->fullFilename()) && $this->tag != "HEAD") {    //no need to rebuild the cache for non-head releases, return those immediately if they are packaged
+		//	return $this->fullURL();
+		//}
 
 		//$cachedObject = DataObject::get_one("GitInfoCache","URL = '$this->url' AND Branch = '$this->branch' AND Tag = '$this->tag'");
 
 		//use the current cached version, if it is present, and has a GitInfoCache object from less than an hour ago
 		//if(file_exists($this->fullFilename()) && $cachedObject != null && $cachedObject->Timestamp >= (time() - 60*60)) {
 
-		if(file_exists($this->fullFilename())) {
+		if(file_exists($this->fullFilename()) && (filesize($this->fullFilename()) > 40)) {
 			return $this->fullURL();
 		} else {
 			//never generate directly, instead redirect to error page explaining to wait
@@ -102,17 +102,18 @@ class CachedGitArchiver extends RequestHandler {
 
 			if ($this->branch) $filename .= "-$this->branch";
 			if ($this->tag) $filename .= "-$this->tag";
-			if ($withExtension) $filename .= ".zip";
+			if ($withExtension) $filename .= ".tar.gz";
 		}
 
 		return $filename;
 	}
 	
 	function Name() {
-		if(file_exists($this->fullFilename())) {
+		if(file_exists($this->fullFilename()) && filesize($this->fullFilename()) > 40) {
 			return $this->Filename();
 		} else {
-			return "Download not yet available";
+			if (file_exists($this->fullFilename())) return "Invalid archive"; 
+			else return "Download not yet available";
 		}
 	}
 	
@@ -245,10 +246,10 @@ class CachedGitArchiver extends RequestHandler {
 		set_time_limit(300);   //always time out after 5 minutes
 
 		$fileExists = file_exists($this->fullFilename());
-		/*if ($fileExists && !$overwrite) {   //only case where we return existing file, otherwise always generate and overwrite existing file
+		if ($fileExists && !$overwrite) {   //only case where we return existing file, otherwise always generate and overwrite existing file
 			return true;
 		} else {
-		*/	$CLI_tmp = escapeshellarg(TEMP_FOLDER);
+			$CLI_tmp = escapeshellarg(TEMP_FOLDER);
 			$CLI_outputFile = escapeshellarg($this->fullFilename());
 
 			$destDir = dirname($this->fullFilename());
@@ -287,12 +288,22 @@ class CachedGitArchiver extends RequestHandler {
 				$CLI_branch = escapeshellarg($this->branch);
 				$CLI_tag = escapeshellarg($this->tag);
 
-				if ($overwrite && $fileExists) unlink($CLI_outputFile); //delete existing file to be replaced by new version
-				exec("cd $CLI_tmp && rm -R -f $CLI_filename && git clone -b $CLI_branch $CLI_url $CLI_filename && cd $CLI_filename && git archive --format=zip $CLI_tag -o $CLI_outputFile && cd .. && rm -r -f $CLI_filename", $output, $retVal);
-				if (!file_exists($CLI_outputFile)) $retVal = 100;
-				elseif (filesize($CLI_outputFile) <= 512) {
-					$retVal = 100;
-				}
+				//if ($overwrite && $fileExists) unlink($CLI_outputFile); //delete existing file to be replaced by new version
+
+				$CLI_outputFile = str_replace("Sites","sites",$CLI_outputFile);
+
+				$command3 = "cd $CLI_tmp && rm -r -f $CLI_filename && git clone -b $CLI_branch $CLI_url $CLI_filename && cd $CLI_filename && git archive --format=tar $CLI_tag | gzip > $CLI_outputFile && cd .. && rm -r -f $CLI_filename";
+				exec($command3, $output, $retVal);
+//				if ($retVal == 0) {
+//					Debug::show($CLI_outputFile);
+//					if (!file_exists($CLI_outputFile)) $retVal = 102;
+//					exec("test -e ".$CLI_outputFile,$o,$r);
+//					Debug::Show($o);
+//					Debug::Show($r);
+//					Debug::Show(file_exists($CLI_outputFile));
+//					Debug::Show(filesize($CLI_outputFile));
+//					//elseif (filesize($CLI_outputFile) <= 40) $retVal = 101; //this is just a zip of the error message
+//				}
 			}
 
 			if($retVal == 0) {
@@ -309,11 +320,12 @@ class CachedGitArchiver extends RequestHandler {
 				$cache->FailedAttempts = $cache->FailedAttempts + 1;
 				$cache->write();
 
-				if ($retVal == 100) $includeError = "- Invalid git branch or tag name";
+				if ($retVal == 101) $includeError = "- Invalid git branch or tag name";
+				if ($retVal == 102) $includeError = "- Could not create file";
 				else $includeError = "";
 				user_error("Couldn't produce .tar.gz of output (return val $retVal $includeError): " . implode("\n", $output), E_USER_ERROR);
 			}
-		/*}*/
+		}
 	}
 
 	/** Creates a git archive (called from a message queue) */
